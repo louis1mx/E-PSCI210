@@ -84,8 +84,12 @@ def run_its(df):
     data = pd.get_dummies(df, columns=['month'], prefix='M', drop_first=True)
     month_cols = sorted([c for c in data.columns if c.startswith('M_')])
 
+    # post_policy (immediate level shift) is excluded per professor feedback:
+    # a greening policy cannot plausibly cause an instantaneous temperature
+    # jump on day one. The model now estimates only the post-policy slope
+    # change (trend_post), which is the ecologically meaningful parameter.
     feature_cols = (
-        ['time_trend', 'post_policy', 'trend_post',
+        ['time_trend', 'trend_post',
          'temp_2m_C', 'precip_mm', 'solar_rad_Wm2']
         + month_cols
     )
@@ -114,7 +118,7 @@ def run_its(df):
 
     # ── Key coefficients ─────────────────────────────────────
     print('\nKey policy coefficients:')
-    for key in ['post_policy', 'trend_post']:
+    for key in ['trend_post']:
         b = model.params[key]
         p = model.pvalues[key]
         sig = '***' if p < 0.01 else ('**' if p < 0.05
@@ -125,8 +129,7 @@ def run_its(df):
     data_clean['fitted'] = model.fittedvalues
 
     cf = data_clean.copy()
-    cf['post_policy'] = 0.0
-    cf['trend_post']  = 0.0
+    cf['trend_post'] = 0.0
     X_cf = sm.add_constant(cf[feature_cols].astype(float))
     data_clean['counterfactual'] = model.predict(X_cf)
     data_clean['effect'] = (data_clean['counterfactual']
@@ -206,15 +209,12 @@ def fig_its(df, data_clean, post, model):
     ax.axvline(pd.Timestamp('2022-01-01'),
                color='#E8593C', lw=1.4, ls='--', alpha=0.8)
 
-    # Coefficient annotation
-    b_level = model.params['post_policy']
+    # Coefficient annotation (slope change only; level shift excluded)
     b_slope = model.params['trend_post']
-    p_level = model.pvalues['post_policy']
     p_slope = model.pvalues['trend_post']
     ymax = ax.get_ylim()[1]
     ax.text(pd.Timestamp('2022-03-01'), ymax * 0.97,
-            f'Level shift: {b_level:+.2f} °C  (p={p_level:.3f})\n'
-            f'Slope change: {b_slope:+.4f} °C/month  (p={p_slope:.3f})',
+            f'Post-policy slope change: {b_slope:+.4f} °C/month  (p={p_slope:.3f})',
             color='#E8593C', fontsize=9, va='top')
 
     ax.set_xlabel('Date')
