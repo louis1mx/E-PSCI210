@@ -1,0 +1,25 @@
+venv/
+venv311/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.egg-info/
+.ipynb_checkpoints/
+*.log
+
+# Internal generation scripts
+scripts/07_generate_slides.py
+scripts/08_generate_paper_pdf.py
+
+# Data and outputs - not uploaded
+data/
+outputs/
+AlphaEarth/data/
+AlphaEarth/outputs/
+
+# Formatting and docs
+formatting/
+docs/
+guidelines/
+neurips_2026.sty
