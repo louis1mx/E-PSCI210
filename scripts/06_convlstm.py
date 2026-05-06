@@ -423,9 +423,10 @@ def plot_timeseries(y_true, y_pred, yms_test, history=None):
     true_ts = y_true.mean(axis=(1, 2, 3))
     pred_ts = y_pred.mean(axis=(1, 2, 3))
     dates   = pd.to_datetime(yms_test)
-    history_dict = None
-    if history is not None:
-        history_dict = history.history
+    if history is not None and hasattr(history, 'history'):
+        history_dict = history.history   # Keras History object
+    elif isinstance(history, dict):
+        history_dict = history           # already loaded from disk
     else:
         history_dict = load_saved_history()
 
@@ -468,19 +469,78 @@ def plot_timeseries(y_true, y_pred, yms_test, history=None):
     print('  Saved fig9_convlstm_timeseries.png')
 
 
+# ── Eval-only (skip training, load saved model) ─────────────
+def evaluate_only(images, yms):
+    """
+    Load the saved ConvLSTM model and evaluate on post-policy months.
+    Computes baseline comparison without retraining.
+    """
+    saved_model_path = MODEL_DIR / 'convlstm_model.keras'
+    if not saved_model_path.exists():
+        raise FileNotFoundError(
+            f'No saved model found at {saved_model_path}.\n'
+            'Run without --eval-only first to train and save the model.')
+
+    print(f'  Loading saved model from {saved_model_path}')
+    model = tf.keras.models.load_model(saved_model_path)
+
+    images_norm, mu, sig = normalise(images)
+    X, y = make_sequences(images_norm)
+    target_yms = [yms[i + SEQ_LEN] for i in range(len(X))]
+
+    test_mask = [ym >= POLICY_YM for ym in target_yms]
+    X_test    = X[test_mask]
+    y_test    = y[test_mask]
+    yms_test  = [ym for ym, m in zip(target_yms, test_mask) if m]
+
+    print(f'  Evaluating on {len(X_test)} post-policy months …')
+
+    y_pred_norm = model.predict(X_test)
+    y_pred = y_pred_norm * sig[..., np.newaxis] + mu[..., np.newaxis]
+    y_true = y_test      * sig[..., np.newaxis] + mu[..., np.newaxis]
+
+    rmse = np.sqrt(mean_squared_error(y_true.reshape(-1), y_pred.reshape(-1)))
+    mae  = mean_absolute_error(y_true.reshape(-1), y_pred.reshape(-1))
+    print(f'\n  ConvLSTM  RMSE : {rmse:.3f} °C')
+    print(f'  ConvLSTM  MAE  : {mae:.3f} °C')
+
+    baselines = compute_baselines(images, yms, yms_test)
+
+    rows = []
+    for name, vals in baselines.items():
+        rows.append({'model': name, 'RMSE_C': vals['RMSE_C'], 'MAE_C': vals['MAE_C']})
+    rows.append({'model': 'ConvLSTM', 'RMSE_C': rmse, 'MAE_C': mae})
+    metrics_df = pd.DataFrame(rows)
+    metrics_df.to_csv(TAB_DIR / 'convlstm_metrics.csv', index=False)
+
+    print('\n  Model comparison:')
+    print(metrics_df.to_string(index=False))
+
+    history = load_saved_history()
+    return model, history, y_true, y_pred, yms_test, mu, sig
+
+
 # ── Main ────────────────────────────────────────────────────
 if __name__ == '__main__':
+    import sys
+    eval_only = '--eval-only' in sys.argv
+
     print('Loading Landsat tiles …')
     images, yms = load_tiles()
 
-    model, history, y_true, y_pred, yms_test, mu, sig = \
-        train_and_evaluate(images, yms)
+    if eval_only:
+        print('\n[eval-only mode: skipping training, loading saved model]')
+        model, history, y_true, y_pred, yms_test, mu, sig = \
+            evaluate_only(images, yms)
+    else:
+        model, history, y_true, y_pred, yms_test, mu, sig = \
+            train_and_evaluate(images, yms)
 
     print('\nGenerating output figures …')
     plot_residual_map(y_true, y_pred, yms_test)
     plot_timeseries(y_true, y_pred, yms_test, history)
 
     print(f'\n✅  Script 06 complete.')
-    print(f'   Model saved : {MODEL_DIR / "convlstm_model.keras"}')
+    print(f'   Model       : {MODEL_DIR / "convlstm_model.keras"}')
     print(f'   Figures     : {FIG_DIR}')
     print(f'   Metrics     : {TAB_DIR / "convlstm_metrics.csv"}')
