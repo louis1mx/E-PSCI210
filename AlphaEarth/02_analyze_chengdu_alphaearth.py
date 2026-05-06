@@ -534,6 +534,95 @@ def plot_alignment(
     plt.close(fig)
 
 
+def plot_quadrant_scatter(
+    change_map: np.ndarray,
+    residual_map: np.ndarray,
+    hotspot_stats: dict,
+    pearson_r: float,
+    baseline_year: int,
+    compare_year: int,
+    out_path: Path,
+) -> None:
+    """
+    Standalone 2x2 quadrant scatterplot: AlphaEarth change (x) vs
+    ConvLSTM cooling residual (y). Each point is coloured by quadrant.
+    Threshold lines and per-quadrant counts are annotated.
+    Saved as a separate figure — does not overwrite the alignment panel.
+    """
+    valid = np.isfinite(change_map) & np.isfinite(residual_map)
+    x = change_map[valid]
+    y = residual_map[valid]
+
+    x_thr = hotspot_stats["change_threshold"]
+    y_thr = hotspot_stats["cooling_threshold"]
+
+    # Assign quadrant colour per point
+    q_colors = np.where(
+        (x >= x_thr) & (y >= y_thr), 0,   # Q1 high change + high cooling
+        np.where(
+            (x >= x_thr) & (y < 0), 1,    # Q2 high change + warming
+            np.where(
+                (x < x_thr) & (y >= y_thr), 2,  # Q3 cooling without high change
+                3,                               # Q4 background
+            ),
+        ),
+    )
+
+    palette = ["#1B9E77", "#D95F02", "#7570B3", "#BBBBBB"]
+    labels  = [
+        "Q1: high change + high cooling",
+        "Q2: high change + warming",
+        "Q3: cooling, low change",
+        "Q4: background",
+    ]
+
+    fig, ax = plt.subplots(figsize=(7, 6))
+
+    for qi, (color, label) in enumerate(zip(palette, labels)):
+        mask = q_colors == qi
+        count = mask.sum()
+        ax.scatter(
+            x[mask], y[mask],
+            s=10, alpha=0.55, color=color, edgecolors="none",
+            label=f"{label}  (n={count:,})",
+            rasterized=True,
+        )
+
+    # Threshold lines
+    ax.axvline(x_thr, color="#555", lw=1.0, ls="--", alpha=0.7)
+    ax.axhline(0,     color="#555", lw=0.8, ls=":",  alpha=0.7)
+    ax.axhline(y_thr, color="#555", lw=1.0, ls="--", alpha=0.7)
+
+    # Quadrant labels in corners
+    xlim = ax.get_xlim(); ylim = ax.get_ylim()
+    pad_x = (xlim[1] - xlim[0]) * 0.02
+    pad_y = (ylim[1] - ylim[0]) * 0.02
+    corner_kw = dict(fontsize=8, alpha=0.75, va="top")
+    ax.text(xlim[1] - pad_x, ylim[1] - pad_y, "Q1", color=palette[0],
+            ha="right", **corner_kw)
+    ax.text(xlim[1] - pad_x, ylim[0] + pad_y, "Q2", color=palette[1],
+            ha="right", va="bottom", fontsize=8, alpha=0.75)
+    ax.text(xlim[0] + pad_x, ylim[1] - pad_y, "Q3", color=palette[2],
+            ha="left",  **corner_kw)
+
+    ax.set_xlabel(f"AlphaEarth cosine change  ({baseline_year} → {compare_year})",
+                  fontsize=10)
+    ax.set_ylabel("ConvLSTM cooling residual (°C)\n[predicted − observed]",
+                  fontsize=10)
+    ax.set_title(
+        f"AlphaEarth embedding change vs ConvLSTM cooling residual\n"
+        f"Chengdu {baseline_year}–{compare_year}  ·  "
+        f"r = {pearson_r:.3f}  ·  "
+        f"Q1 overlap = {hotspot_stats['overlap_share_pct']:.1f}%",
+        fontsize=10,
+    )
+    ax.legend(fontsize=8, loc="upper left", framealpha=0.9)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+    print(f"  Saved quadrant scatter: {out_path}")
+
+
 def main() -> None:
     args = parse_args()
 
@@ -634,6 +723,17 @@ def main() -> None:
         baseline_year,
         compare_year,
         fig_path,
+    )
+
+    scatter_path = OUT_FIG_DIR / f"chengdu_alphaearth_quadrant_scatter_{stem}.png"
+    plot_quadrant_scatter(
+        change_map,
+        residual_map,
+        hotspot_stats,
+        pearson_r,
+        baseline_year,
+        compare_year,
+        scatter_path,
     )
 
     np.save(OUT_ARR_DIR / f"cosine_change_{stem}.npy", change_map)
