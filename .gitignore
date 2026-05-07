@@ -17,9 +17,12 @@ data/
 AlphaEarth/data/
 AlphaEarth/outputs/
 
-# outputs/ tracked except for tex paper files
+# outputs/ tracked except for select files
 outputs/
 !outputs/*.tex
+!outputs/figures/*.png
+AlphaEarth/outputs/
+!AlphaEarth/outputs/figures/*.png
 
 # Formatting and docs
 formatting/
