@@ -446,17 +446,21 @@ with spatially concentrated greening effects.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.82\linewidth]{fig8_convlstm_residuals.png}
-  \caption{ConvLSTM residual map. Positive residuals indicate observed cooling
-  relative to model expectation.}
-  \label{fig:convlstm_map}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.82\linewidth]{fig9_convlstm_timeseries.png}
-  \caption{ConvLSTM predicted vs observed time series and model loss curves.}
-  \label{fig:convlstm_ts}
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{fig8_convlstm_residuals.png}
+    \caption{Residual map. Positive values indicate observed cooling relative
+    to the pre-policy reference.}
+    \label{fig:convlstm_map}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{fig9_convlstm_timeseries.png}
+    \caption{Predicted vs.\ observed spatial-mean LST (top) and training loss
+    curves (bottom).}
+    \label{fig:convlstm_ts}
+  \end{subfigure}
+  \caption{ConvLSTM post-policy evaluation. Left: spatial cooling residual map
+  averaged over 2022--2025. Right: temporal performance and training diagnostics.}
+  \label{fig:convlstm}
 \end{figure}
 
 \subsection{AlphaEarth Results}
