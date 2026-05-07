@@ -426,6 +426,46 @@ def hotspot_table(
     return pd.DataFrame.from_records(records)
 
 
+def assign_greening_quadrants(
+    change_map: np.ndarray,
+    delta_greening_prob: np.ndarray,
+    quantile: float,
+) -> tuple[np.ndarray, dict[str, float]]:
+    """
+    Same quadrant logic as assign_quadrants but uses Δgreening_prob instead
+    of cooling residual as the second axis.
+      Q1: high embedding change + greening (Δgreening > threshold)
+      Q2: high embedding change + paving   (Δgreening < 0)
+      Q3: greening without high change
+      Q4: background / low-signal
+    """
+    valid = np.isfinite(change_map) & np.isfinite(delta_greening_prob)
+    change_vals   = change_map[valid]
+    greening_vals = delta_greening_prob[valid]
+
+    change_thr   = float(np.quantile(change_vals, quantile))
+    greening_thr = float(np.quantile(greening_vals, quantile))
+
+    quadrant     = np.zeros(change_map.shape, dtype=np.uint8)
+    high_change  = change_map >= change_thr
+    high_greening = delta_greening_prob >= greening_thr
+
+    quadrant[valid] = 4
+    quadrant[high_change & high_greening] = 1
+    quadrant[high_change & (delta_greening_prob < 0)] = 2
+    quadrant[(~high_change) & high_greening & valid] = 3
+
+    union   = np.logical_or(high_change, high_greening) & valid
+    overlap = high_change & high_greening & valid
+    stats = {
+        "change_threshold":    change_thr,
+        "greening_threshold":  greening_thr,
+        "overlap_share_pct":   float(overlap.sum() / valid.sum() * 100.0),
+        "hotspot_jaccard":     float(overlap.sum() / union.sum()) if union.sum() else np.nan,
+    }
+    return quadrant, stats
+
+
 def plot_alignment(
     change_map: np.ndarray,
     residual_map: np.ndarray,
@@ -439,6 +479,8 @@ def plot_alignment(
     baseline_year: int,
     compare_year: int,
     out_path: Path,
+    delta_greening_prob: np.ndarray | None = None,
+    greening_quadrant: np.ndarray | None = None,
 ) -> None:
     valid = np.isfinite(change_map) & np.isfinite(residual_map)
     quad_colors = ["#000000", "#1B9E77", "#D95F02", "#7570B3", "#D9D9D9"]
@@ -463,14 +505,25 @@ def plot_alignment(
     axes[0, 2].set_title(f"(c) Annual mean ΔLST\n{baseline_year} → {compare_year}")
     plt.colorbar(im2, ax=axes[0, 2], shrink=0.82, label="°C")
 
-    axes[1, 0].imshow(quadrant, cmap=quad_cmap, norm=quad_norm)
-    axes[1, 0].set_title("(d) Quadrant map")
-    labels = [
-        "1 = high change + high cooling",
-        "2 = high change + warming",
-        "3 = cooling without high change",
-        "4 = background / low-signal",
-    ]
+    # Panel (d): greening-based quadrant if available, else cooling-based
+    if greening_quadrant is not None:
+        axes[1, 0].imshow(greening_quadrant, cmap=quad_cmap, norm=quad_norm)
+        axes[1, 0].set_title("(d) Greening quadrant map")
+        labels = [
+            "1 = high change + greening",
+            "2 = high change + paving",
+            "3 = greening, low change",
+            "4 = background / low-signal",
+        ]
+    else:
+        axes[1, 0].imshow(quadrant, cmap=quad_cmap, norm=quad_norm)
+        axes[1, 0].set_title("(d) Quadrant map")
+        labels = [
+            "1 = high change + high cooling",
+            "2 = high change + warming",
+            "3 = cooling without high change",
+            "4 = background / low-signal",
+        ]
     handles = [
         plt.Line2D([0], [0], marker="s", color="w", label=label, markersize=9,
                    markerfacecolor=quad_colors[i])
@@ -488,21 +541,27 @@ def plot_alignment(
     for text in legend.get_texts():
         text.set_color("black")
 
-    if delta_ndvi is not None:
+    # Panel (e): Δgreening_prob if available, else ΔNDVI
+    if delta_greening_prob is not None:
+        gp_lim = max(abs(np.nanmin(delta_greening_prob)),
+                     abs(np.nanmax(delta_greening_prob)))
+        im3 = axes[1, 1].imshow(delta_greening_prob, cmap="RdYlGn",
+                                 vmin=-gp_lim, vmax=gp_lim)
+        axes[1, 1].set_title(
+            f"(e) Δgreening probability\n{baseline_year} → {compare_year}"
+        )
+        plt.colorbar(im3, ax=axes[1, 1], shrink=0.82,
+                     label="+ greening  − paving")
+    elif delta_ndvi is not None:
         ndvi_lim = np.nanmax(np.abs(delta_ndvi))
         im3 = axes[1, 1].imshow(delta_ndvi, cmap="BrBG", vmin=-ndvi_lim, vmax=ndvi_lim)
         axes[1, 1].set_title(f"(e) Annual mean ΔNDVI\n{baseline_year} → {compare_year}")
         plt.colorbar(im3, ax=axes[1, 1], shrink=0.82, label="NDVI")
     else:
         axes[1, 1].axis("off")
-        axes[1, 1].text(
-            0.5,
-            0.5,
-            "No annual NDVI raster found.\nRun export with --with-ndvi.",
-            ha="center",
-            va="center",
-            fontsize=11,
-        )
+        axes[1, 1].text(0.5, 0.5,
+                        "No NDVI or greening-prob data found.",
+                        ha="center", va="center", fontsize=11)
 
     axes[1, 2].scatter(
         change_map[valid],
@@ -525,8 +584,9 @@ def plot_alignment(
         ax.set_xticks([])
         ax.set_yticks([])
 
+    panel_e_label = "Δgreening prob" if delta_greening_prob is not None else "ΔNDVI"
     fig.suptitle(
-        "Chengdu AlphaEarth change detection aligned with cooling, ΔLST, and ΔNDVI",
+        f"Chengdu AlphaEarth change detection aligned with cooling, ΔLST, and {panel_e_label}",
         fontsize=12,
     )
     fig.tight_layout()
@@ -705,6 +765,19 @@ def main() -> None:
         change_map, residual_map, delta_lst, delta_ndvi, quadrant, transform
     )
 
+    # Load WorldCover-supervised Δgreening_prob if produced by script 04
+    greening_prob_path = OUT_ARR_DIR / "delta_greening_prob.npy"
+    if greening_prob_path.exists():
+        delta_greening_prob = np.load(greening_prob_path).astype(np.float32)
+        greening_quadrant, _ = assign_greening_quadrants(
+            change_map, delta_greening_prob, args.hotspot_quantile
+        )
+        print(f"  Loaded Δgreening_prob from {greening_prob_path}")
+    else:
+        delta_greening_prob = None
+        greening_quadrant   = None
+        print("  delta_greening_prob.npy not found — run 04_worldcover_classifier.py to enable greening panels")
+
     stem = f"{baseline_year}_{compare_year}"
     fig_path = OUT_FIG_DIR / f"chengdu_alphaearth_alignment_{stem}.png"
     summary_path = OUT_TAB_DIR / f"chengdu_alphaearth_summary_{stem}.csv"
@@ -723,6 +796,8 @@ def main() -> None:
         baseline_year,
         compare_year,
         fig_path,
+        delta_greening_prob=delta_greening_prob,
+        greening_quadrant=greening_quadrant,
     )
 
     scatter_path = OUT_FIG_DIR / f"chengdu_alphaearth_quadrant_scatter_{stem}.png"
