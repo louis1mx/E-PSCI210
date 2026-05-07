@@ -242,18 +242,23 @@ comparison is interpreted as a counterfactual reference: what the city would
 have looked like after 2022 if pre-policy dynamics had continued.
 
 The residual is:
-\[
+\begin{equation}
 R_{i,t} = \widehat{Y}_{i,t}^{counterfactual} - Y_{i,t}^{observed}.
-\]
+\label{eq:residual}
+\end{equation}
 If $R_{i,t}$ is positive, the observed LST is cooler than the model expected at
 pixel $i$ and month $t$. This does not prove the policy caused the cooling, but
 it identifies where cooling is stronger than expected from historical patterns.
 
-The current ConvLSTM uses 12-month input sequences, resampled $64 \times 64$
-LST images, two ConvLSTM layers, and a convolutional output head. It is trained
-only on pre-policy data, with post-policy data held out for evaluation. For the
-AlphaEarth alignment analysis, I use the mean ConvLSTM residual over the full
-post-policy period 2022--2025.
+The ConvLSTM takes as input 12 consecutive monthly LST images
+(each resampled to $64 \times 64$ pixels) and predicts the next month's LST
+image --- a one-step-ahead forecast in the temporal sequence. The model has two
+ConvLSTM layers and a convolutional output head. It is trained only on
+pre-policy monthly images (January 2016 -- December 2021, 60 months), using the
+first 48 months for training and the remaining 12 as a validation set. The
+46 post-policy months (January 2022 -- October 2025) are held out entirely for
+evaluation. For the AlphaEarth alignment analysis, I use the mean residual
+across all post-policy months.
 
 \subsection{AlphaEarth Change Detection}
 
