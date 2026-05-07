@@ -254,7 +254,7 @@ only on pre-policy data, with post-policy data held out for evaluation. For the
 AlphaEarth alignment analysis, I use the mean ConvLSTM residual over the full
 post-policy period 2022--2025.
 
-\subsection{Operational AlphaEarth Change Detection}
+\subsection{AlphaEarth Change Detection}
 
 The AlphaEarth analysis is implemented in three steps.
 
@@ -465,7 +465,7 @@ with spatially concentrated greening effects.
   \label{fig:convlstm_ts}
 \end{figure}
 
-\subsection{Operational AlphaEarth Results}
+\subsection{AlphaEarth Results}
 
 The AlphaEarth analysis compares 2021 as the last full pre-policy year with
 2025 as the latest available post-policy year. The mean cosine embedding change across valid cells
@@ -529,39 +529,6 @@ Greening + cooling overlap share (Q1) & see Fig.~\ref{fig:quadrant_scatter} \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[!b]
-  \centering
-  \includegraphics[width=0.80\linewidth]{chengdu_alphaearth_alignment_2021_2025.png}
-  \caption{AlphaEarth alignment workflow for Chengdu. Panel (a) shows
-  2021--2025 cosine embedding change. Panel (b) shows mean ConvLSTM cooling
-  residual over 2022--2025. Panel (c) shows annual mean $\Delta$LST. Panel (d)
-  shows the greening $\times$ cooling quadrant map: Q1 (green) greening and
-  cooling; Q2 (orange) greening and warming; Q3 (purple) paving and cooling;
-  Q4 (grey) background. Panel (e) shows WorldCover-supervised $\Delta$greening
-  probability (positive = surface shifted toward vegetation; negative = toward
-  built form). Panel (f) shows the cell-wise scatter of $\Delta$greening\_prob
-  versus cooling residual.}
-  \label{fig:alphaearth_alignment}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.72\linewidth]{chengdu_alphaearth_quadrant_scatter_2021_2025.png}
-  \caption{Quadrant scatterplot of WorldCover-supervised $\Delta$greening
-  probability (x-axis) versus ConvLSTM cooling residual (y-axis) for all valid
-  grid cells. Points are coloured by quadrant: Q1 (green) greening and cooling;
-  Q2 (orange) greening and warming; Q3 (purple) paving and cooling; Q4 (grey)
-  background. Dashed lines mark the 75th-percentile thresholds for each axis;
-  the dotted line marks zero on each axis.}
-  \label{fig:quadrant_scatter}
-\end{figure}
-
-This figure also reveals an important data-quality caveat. The annual
-$\Delta$LST panel contains a large low-information region because Landsat
-coverage is incomplete for many grid cells across the archive. In practice,
-this makes the AlphaEarth-to-LST comparison noisier than the
-AlphaEarth-to-NDVI comparison.
-
 \subsection{WorldCover-Supervised Greening Analysis}
 
 The WorldCover classifier (cross-validation accuracy = 0.758) is applied to
@@ -583,6 +550,34 @@ This result clarifies the earlier finding that high-embedding-change cells are
 not predominantly greening: the surface changes captured by AlphaEarth in the
 post-policy period are largely consistent with urban expansion rather than
 vegetation gain.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\linewidth]{chengdu_alphaearth_quadrant_scatter_2021_2025.png}
+  \caption{Quadrant scatterplot of WorldCover-supervised $\Delta$greening
+  probability (x-axis) versus ConvLSTM cooling residual (y-axis) for all valid
+  grid cells. Points are coloured by quadrant: Q1 (green) greening and cooling;
+  Q2 (orange) greening and warming; Q3 (purple) paving and cooling; Q4 (grey)
+  background. Dashed lines mark the 75th-percentile thresholds for each axis;
+  the dotted line marks zero on each axis.}
+  \label{fig:quadrant_scatter}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.80\linewidth]{chengdu_alphaearth_alignment_2021_2025.png}
+  \caption{AlphaEarth alignment workflow for Chengdu. Panel (a) shows
+  2021--2025 cosine embedding change. Panel (b) shows mean ConvLSTM cooling
+  residual over 2022--2025. Panel (c) shows annual mean $\Delta$LST. Panel (d)
+  shows the greening $\times$ cooling quadrant map: Q1 (green) greening and
+  cooling; Q2 (orange) greening and warming; Q3 (purple) paving and cooling;
+  Q4 (grey) background. Panel (e) shows WorldCover-supervised $\Delta$greening
+  probability (positive = surface shifted toward vegetation; negative = toward
+  built form). Panel (f) shows the cell-wise scatter of $\Delta$greening\_prob
+  versus cooling residual. The $\Delta$LST panel contains a large
+  low-information region due to incomplete Landsat coverage.}
+  \label{fig:alphaearth_alignment}
+\end{figure}
 
 \FloatBarrier
 \section{Discussion}
