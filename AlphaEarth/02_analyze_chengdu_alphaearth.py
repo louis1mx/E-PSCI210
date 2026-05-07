@@ -563,22 +563,40 @@ def plot_alignment(
                         "No NDVI or greening-prob data found.",
                         ha="center", va="center", fontsize=11)
 
-    axes[1, 2].scatter(
-        change_map[valid],
-        residual_map[valid],
-        s=18,
-        alpha=0.7,
-        c=zscore(change_map)[valid],
-        cmap="viridis",
-        edgecolor="none",
-    )
-    axes[1, 2].axhline(0, color="#444", lw=1)
-    axes[1, 2].set_xlabel("AlphaEarth cosine change")
-    axes[1, 2].set_ylabel("Cooling residual (°C)")
-    subtitle = [f"r(change, cooling) = {pearson_r:.3f}", f"r(change, ΔLST) = {lst_corr:.3f}"]
-    if np.isfinite(ndvi_corr):
-        subtitle.append(f"r(change, ΔNDVI) = {ndvi_corr:.3f}")
-    axes[1, 2].set_title("(f) Cell-wise alignment\n" + " · ".join(subtitle))
+    if delta_greening_prob is not None:
+        valid_f = np.isfinite(delta_greening_prob) & np.isfinite(residual_map)
+        gp_r = float(np.corrcoef(delta_greening_prob[valid_f], residual_map[valid_f])[0, 1])
+        axes[1, 2].scatter(
+            delta_greening_prob[valid_f],
+            residual_map[valid_f],
+            s=18,
+            alpha=0.7,
+            c=delta_greening_prob[valid_f],
+            cmap="RdYlGn",
+            edgecolor="none",
+        )
+        axes[1, 2].axhline(0, color="#444", lw=1)
+        axes[1, 2].axvline(0, color="#444", lw=0.8, ls=":")
+        axes[1, 2].set_xlabel("Δgreening probability\n(+ greening  − paving)")
+        axes[1, 2].set_ylabel("Cooling residual (°C)")
+        axes[1, 2].set_title(f"(f) Greening vs cooling alignment\nr(Δgreening, cooling) = {gp_r:.3f}")
+    else:
+        axes[1, 2].scatter(
+            change_map[valid],
+            residual_map[valid],
+            s=18,
+            alpha=0.7,
+            c=zscore(change_map)[valid],
+            cmap="viridis",
+            edgecolor="none",
+        )
+        axes[1, 2].axhline(0, color="#444", lw=1)
+        axes[1, 2].set_xlabel("AlphaEarth cosine change")
+        axes[1, 2].set_ylabel("Cooling residual (°C)")
+        subtitle = [f"r(change, cooling) = {pearson_r:.3f}", f"r(change, ΔLST) = {lst_corr:.3f}"]
+        if np.isfinite(ndvi_corr):
+            subtitle.append(f"r(change, ΔNDVI) = {ndvi_corr:.3f}")
+        axes[1, 2].set_title("(f) Cell-wise alignment\n" + " · ".join(subtitle))
 
     for ax in (axes[0, 0], axes[0, 1], axes[0, 2], axes[1, 0], axes[1, 1]):
         ax.set_xticks([])
