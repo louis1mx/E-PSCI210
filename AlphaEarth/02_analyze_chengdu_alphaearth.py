@@ -427,41 +427,41 @@ def hotspot_table(
 
 
 def assign_greening_quadrants(
-    change_map: np.ndarray,
     delta_greening_prob: np.ndarray,
+    residual_map: np.ndarray,
     quantile: float,
 ) -> tuple[np.ndarray, dict[str, float]]:
     """
-    Same quadrant logic as assign_quadrants but uses Δgreening_prob instead
-    of cooling residual as the second axis.
-      Q1: high embedding change + greening (Δgreening > threshold)
-      Q2: high embedding change + paving   (Δgreening < 0)
-      Q3: greening without high change
-      Q4: background / low-signal
+    Quadrant map using Δgreening_prob (x) vs ConvLSTM cooling residual (y).
+      Q1: greening  + cooling   (Δgreening > threshold AND residual > threshold)
+      Q2: greening  + warming   (Δgreening > threshold AND residual < 0)
+      Q3: paving    + cooling   (Δgreening < 0         AND residual > threshold)
+      Q4: paving    + warming / background
     """
-    valid = np.isfinite(change_map) & np.isfinite(delta_greening_prob)
-    change_vals   = change_map[valid]
+    valid = np.isfinite(delta_greening_prob) & np.isfinite(residual_map)
     greening_vals = delta_greening_prob[valid]
+    cooling_vals  = residual_map[valid]
 
-    change_thr   = float(np.quantile(change_vals, quantile))
     greening_thr = float(np.quantile(greening_vals, quantile))
+    cooling_thr  = float(np.quantile(cooling_vals,  quantile))
 
-    quadrant     = np.zeros(change_map.shape, dtype=np.uint8)
-    high_change  = change_map >= change_thr
+    quadrant      = np.zeros(delta_greening_prob.shape, dtype=np.uint8)
     high_greening = delta_greening_prob >= greening_thr
+    is_paving     = delta_greening_prob < 0
+    high_cooling  = residual_map >= cooling_thr
 
     quadrant[valid] = 4
-    quadrant[high_change & high_greening] = 1
-    quadrant[high_change & (delta_greening_prob < 0)] = 2
-    quadrant[(~high_change) & high_greening & valid] = 3
+    quadrant[high_greening & high_cooling] = 1   # greening + cooling
+    quadrant[high_greening & (residual_map < 0)] = 2  # greening + warming
+    quadrant[is_paving & high_cooling & valid] = 3    # paving + cooling
 
-    union   = np.logical_or(high_change, high_greening) & valid
-    overlap = high_change & high_greening & valid
+    union   = np.logical_or(high_greening, high_cooling) & valid
+    overlap = high_greening & high_cooling & valid
     stats = {
-        "change_threshold":    change_thr,
-        "greening_threshold":  greening_thr,
-        "overlap_share_pct":   float(overlap.sum() / valid.sum() * 100.0),
-        "hotspot_jaccard":     float(overlap.sum() / union.sum()) if union.sum() else np.nan,
+        "greening_threshold": greening_thr,
+        "cooling_threshold":  cooling_thr,
+        "overlap_share_pct":  float(overlap.sum() / valid.sum() * 100.0),
+        "hotspot_jaccard":    float(overlap.sum() / union.sum()) if union.sum() else np.nan,
     }
     return quadrant, stats
 
@@ -508,12 +508,12 @@ def plot_alignment(
     # Panel (d): greening-based quadrant if available, else cooling-based
     if greening_quadrant is not None:
         axes[1, 0].imshow(greening_quadrant, cmap=quad_cmap, norm=quad_norm)
-        axes[1, 0].set_title("(d) Greening quadrant map")
+        axes[1, 0].set_title("(d) Greening × cooling quadrant map")
         labels = [
-            "1 = high change + greening",
-            "2 = high change + paving",
-            "3 = greening, low change",
-            "4 = background / low-signal",
+            "1 = greening + cooling",
+            "2 = greening + warming",
+            "3 = paving + cooling",
+            "4 = paving + warming / background",
         ]
     else:
         axes[1, 0].imshow(quadrant, cmap=quad_cmap, norm=quad_norm)
@@ -770,7 +770,7 @@ def main() -> None:
     if greening_prob_path.exists():
         delta_greening_prob = np.load(greening_prob_path).astype(np.float32)
         greening_quadrant, _ = assign_greening_quadrants(
-            change_map, delta_greening_prob, args.hotspot_quantile
+            delta_greening_prob, residual_map, args.hotspot_quantile
         )
         print(f"  Loaded Δgreening_prob from {greening_prob_path}")
     else:
