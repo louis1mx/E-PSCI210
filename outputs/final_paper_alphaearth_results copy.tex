@@ -446,18 +446,21 @@ with spatially concentrated greening effects.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.68\linewidth]{fig8_convlstm_residuals.png}
-  \caption{ConvLSTM spatial cooling residual map averaged over 2022--2025.
-  Positive residuals indicate observed LST cooler than the pre-policy reference.}
-  \label{fig:convlstm_map}
-\end{figure}
-\vspace{-4mm}
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.68\linewidth]{fig9_convlstm_timeseries.png}
-  \caption{ConvLSTM predicted vs.\ observed spatial-mean LST (top) and
-  training loss curves (bottom).}
-  \label{fig:convlstm_ts}
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{fig8_convlstm_residuals.png}
+    \caption{Residual map. Positive values indicate observed cooling relative
+    to the pre-policy reference.}
+    \label{fig:convlstm_map}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{fig9_convlstm_timeseries.png}
+    \caption{Predicted vs.\ observed spatial-mean LST (top) and training loss
+    curves (bottom).}
+    \label{fig:convlstm_ts}
+  \end{subfigure}
+  \caption{ConvLSTM post-policy evaluation. Left: spatial cooling residual map
+  averaged over 2022--2025. Right: temporal performance and training diagnostics.}
+  \label{fig:convlstm}
 \end{figure}
 
 \subsection{AlphaEarth Results}
@@ -679,16 +682,12 @@ workflow shows where Chengdu changed, where it cooled, and where those signals
 do or do not agree, providing a more honest and actionable basis for causal
 attribution than thermal analysis alone.
 
-More broadly, the results validate the feasibility of this three-layer detection
-approach. Even at the coarse 780 m grid resolution imposed by local training
-constraints, the framework successfully distinguishes greening from paving,
-separates thermal anomalies from background warming, and identifies where all
-three signals align. This establishes a methodological foundation that can be
-directly applied at higher spatial resolution. Running the same pipeline at
-30 m Landsat or 10 m Sentinel-2 resolution, aligned with official park boundary
-data, would allow direct testing of whether Chengdu's documented parks and
-greenways produced measurable local cooling, the core policy question this
-framework is designed to answer.
+The results also validate the feasibility of the three-layer detection approach.
+The framework distinguishes greening from paving and identifies where thermal
+and surface-change signals align, even at the coarse 780 m resolution imposed
+by training constraints. Applying the same pipeline at 30 m or 10 m resolution,
+aligned with park boundary data, would allow direct testing of whether
+Chengdu's documented parks produced measurable local cooling.
 
 \FloatBarrier
 
