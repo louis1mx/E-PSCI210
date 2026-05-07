@@ -50,7 +50,7 @@ between 2021 and 2025.
 The ITS model finds no significant city-wide cooling trend
 ($\beta_3 = +0.047$~$^\circ$C/month, $p = 0.574$). The ConvLSTM outperforms
 seasonal climatology (RMSE 4.10 vs.\ 4.34~$^\circ$C) and reveals localized
-cooling residuals in western and southwestern Chengdu. AlphaEarth embedding
+cooling residuals in western, southwestern, and southeastern Chengdu. AlphaEarth embedding
 change is weakly correlated with cooling residuals ($r = 0.071$) and
 $\Delta$NDVI ($r = 0.112$), and negatively correlated with $\Delta$LST
 ($r = -0.124$). Only 6.3\% of grid cells fall into the joint high-change plus
@@ -90,7 +90,7 @@ while controlling for weather and month fixed effects. A ConvLSTM model trained
 only on pre-policy Landsat images generates a spatiotemporal reference against
 which post-policy observations are compared. The ITS model does not find
 statistically significant city-wide cooling. The ConvLSTM residual maps,
-however, suggest localized cooling in western and southwestern Chengdu,
+however, suggest localized cooling in western, southwestern, and southeastern Chengdu,
 indicating that the policy signal may be spatially heterogeneous rather than
 a uniform city-level shift.
 
@@ -252,7 +252,7 @@ it identifies where cooling is stronger than expected from historical patterns.
 
 The ConvLSTM takes as input 12 consecutive monthly LST images
 (each resampled to $64 \times 64$ pixels) and predicts the next month's LST
-image --- a one-step-ahead forecast in the temporal sequence. The model has two
+image (a one-step-ahead forecast in the temporal sequence). The model has two
 ConvLSTM layers and a convolutional output head. It is trained only on
 pre-policy monthly images (January 2016 -- December 2021, 60 months), using the
 first 48 months for training and the remaining 12 as a validation set. The
@@ -294,10 +294,10 @@ Section~\ref{sec:worldcover_method}) with the ConvLSTM cooling residual, using
 the 75th percentile of each distribution as thresholds. This creates four
 interpretable categories:
 \begin{itemize}
-  \item greening and cooling --- the strongest policy-consistent signal;
-  \item greening and warming --- surface transformation without thermal benefit;
-  \item paving and cooling --- cooling despite surface change toward built form;
-  \item paving and warming / background --- development-consistent pattern.
+  \item greening and cooling (the strongest policy-consistent signal);
+  \item greening and warming (surface transformation without thermal benefit);
+  \item paving and cooling (cooling despite surface change toward built form);
+  \item paving and warming or background (development-consistent pattern).
 \end{itemize}
 
 \subsection{WorldCover-Supervised Embedding Interpretation}
@@ -324,17 +324,6 @@ defined as:
 where positive values indicate that a cell's embedding shifted toward
 vegetation-like patterns (greening) and negative values indicate a shift toward
 built or bare land (paving).
-
-\subsection{Why AlphaEarth Improves the Project}
-
-AlphaEarth changes the project in two ways. First, it can improve robustness.
-The Landsat-only pipeline suffers from clouds, missing months, and a relatively
-low revisit frequency. AlphaEarth embeddings summarize multi-sensor annual
-information and are designed to be more analysis-ready. Second, AlphaEarth
-addresses attribution more directly. LST residuals show where cooling happened,
-but they do not show what changed on the ground. Embedding change, especially
-when interpreted jointly with $\Delta$NDVI and $\Delta$LST, can help link
-thermal change to surface transformation.
 
 \section{Results}
 \label{sec:results}
@@ -450,9 +439,8 @@ ConvLSTM & \textbf{4.10} & \textbf{1.94} \\
 The ConvLSTM outperforms both baselines, but its margin over seasonal
 climatology is modest (0.24$^\circ$C RMSE). This is expected: aggregate
 accuracy is not the model's primary contribution. Its value lies in
-capturing spatial heterogeneity --- which pixels cooled more than the
-pre-policy pattern predicts --- a signal that a spatially uniform climatology
-cannot produce. The spatial residual maps show that parts of western and
+capturing spatial heterogeneity: which pixels cooled more than the pre-policy
+pattern predicts, a signal that a spatially uniform climatology cannot produce. The spatial residual maps show that parts of western and
 southwestern Chengdu are cooler than the pre-policy reference, consistent
 with spatially concentrated greening effects.
 
@@ -504,7 +492,7 @@ quadrant. The greening-plus-cooling quadrant (Q1) contains only a small share
 of valid cells, while cells with high greening probability change are roughly
 evenly split between cooling and warming outcomes. Most cooling occurs in cells
 with low or negative $\Delta$greening\_prob (Q3), suggesting that the ConvLSTM
-cooling residuals in western and southwestern Chengdu are not primarily driven
+cooling residuals in western, southwestern, and southeastern Chengdu are not primarily driven
 by detectable surface greening at the current analysis resolution.
 
 \begin{table}[t]
@@ -622,7 +610,7 @@ whether thermal anomalies and surface change are spatially co-located.
 The implemented workflow is a three-layer AI design:
 \begin{enumerate}
   \item ConvLSTM detects where the thermal outcome differs from pre-policy
-  expectations --- identifying pixels that cooled beyond what historical
+  expectations, identifying pixels that cooled beyond what historical
   dynamics predict.
   \item AlphaEarth cosine change detects where the physical surface changed
   in embedding space between 2021 and 2025.
@@ -648,14 +636,14 @@ A critical spatial resolution constraint limits the current analysis. The
 ConvLSTM model was trained at a $64 \times 64$ grid over the 25 km urban
 buffer due to local computational training time constraints, yielding a cell
 size of approximately 780 m. At this resolution, individual parks, greenways,
-and ecological corridors --- the primary intervention targets of the park-city
-policy --- are smaller than a single analysis cell and cannot be resolved.
+and ecological corridors (the primary intervention targets of the park-city
+policy) are smaller than a single analysis cell and cannot be resolved.
 Consequently, the greening-cooling alignment analysis is necessarily coarse:
 a positive $\Delta$greening\_prob in a 780 m cell reflects a dominant land-cover
 shift across a large area, not the addition of a specific park. Future analysis
 at 30 m (Landsat) or 10 m (Sentinel-2 / AlphaEarth native) pixel resolution
 would allow direct testing of whether LST decreased specifically around
-documented park boundaries and greenway corridors --- the ecologically
+documented park boundaries and greenway corridors, the ecologically
 meaningful spatial unit for this policy evaluation.
 
 \subsection{Next Step}
@@ -664,7 +652,7 @@ The most valuable next step is to move the analysis to pixel-level resolution.
 Running the ConvLSTM at 30 m Landsat resolution and aligning it with the 10 m
 AlphaEarth and WorldCover layers would allow direct testing of whether urban
 temperatures decreased specifically in and around documented park and greenway
-locations --- the question the current 780 m grid cannot answer. Overlaying
+locations, a question the current 780 m grid cannot answer. Overlaying
 official park boundary data from Chengdu's park-city planning records would
 provide the ground-truth spatial units needed for this fine-scale evaluation.
 
@@ -687,8 +675,8 @@ with cooling and vegetation gain.
 That does not make AlphaEarth a failure. Instead, it makes the project more
 credible. Rather than over-claiming that cooling proves policy success, the combined
 workflow shows where Chengdu changed, where it cooled, and where those signals
-do or do not agree --- a more honest and actionable basis for causal attribution
-than thermal analysis alone.
+do or do not agree, providing a more honest and actionable basis for causal
+attribution than thermal analysis alone.
 
 \FloatBarrier
 
