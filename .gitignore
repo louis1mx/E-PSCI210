@@ -14,9 +14,12 @@ scripts/08_generate_paper_pdf.py
 
 # Data and outputs - not uploaded
 data/
-outputs/
 AlphaEarth/data/
 AlphaEarth/outputs/
+
+# outputs/ tracked except for tex paper files
+outputs/
+!outputs/*.tex
 
 # Formatting and docs
 formatting/
